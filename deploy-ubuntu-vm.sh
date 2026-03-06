@@ -146,6 +146,42 @@ else
 fi
 "
 
+# Step 5: Create systemd service for openclaw-gateway (idempotent)
+echo "Step 5: Configuring openclaw-gateway systemd service..."
+az vm run-command invoke -g "$RESOURCE_GROUP" -n "$VM_NAME" --command-id RunShellScript \
+    --scripts "
+SERVICE_FILE=/etc/systemd/system/openclaw-gateway.service
+if [ ! -f \"\$SERVICE_FILE\" ]; then
+    OPENCLAW_BIN=\$(which openclaw || npm bin -g)/openclaw
+    cat > \"\$SERVICE_FILE\" <<EOF
+[Unit]
+Description=OpenClaw Gateway Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=\$OPENCLAW_BIN gateway
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    systemctl enable openclaw-gateway.service
+    systemctl start openclaw-gateway.service
+    echo 'openclaw-gateway service created and started'
+else
+    echo 'openclaw-gateway service already exists'
+    systemctl daemon-reload
+    systemctl restart openclaw-gateway.service
+fi
+systemctl status openclaw-gateway.service --no-pager || true
+"
+
 # Verify installation
 echo "Verifying installation..."
 az vm run-command invoke -g "$RESOURCE_GROUP" -n "$VM_NAME" --command-id RunShellScript \
