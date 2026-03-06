@@ -1,0 +1,21 @@
+services:
+  openclaw:
+    build: .
+    container_name: openclaw-gateway
+    restart: unless-stopped
+    # Prevent Chrome D-Bus hangs — no session bus in containers
+    environment:
+      - DBUS_SESSION_BUS_ADDRESS=/dev/null
+      - NODE_ENV=production
+    # Chrome needs >64MB shared memory for page rendering
+    shm_size: '2gb'
+    volumes:
+      - openclaw-data:/home/node/.openclaw
+    ports:
+      # Bind to loopback only — access via SSH tunnel:
+      #   ssh -L 18789:127.0.0.1:18789 <user>@<vm-ip>
+      - "127.0.0.1:18789:18789"
+    # No Docker socket mounted — sandbox mode disabled (VM is the sandbox)
+
+volumes:
+  openclaw-data:
